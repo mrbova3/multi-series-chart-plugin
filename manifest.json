@@ -1,0 +1,11 @@
+{
+  "name": "Multi-series chart generator",
+  "id": "3bf35518-52b6-48b3-9e95-8552862ea85a",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma", "slides"],
+  "relaunchButtons": [
+    { "command": "3bf35518-52b6-48b3-9e95-8552862ea85a", "name": "Multi-series chart generator" }
+  ]
+}
