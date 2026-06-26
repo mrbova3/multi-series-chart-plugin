@@ -1,1 +1,214 @@
-PLACEHOLDER_UI
+<!doctype html>
+<html>
+<head>
+  <script>try{window.localStorage.getItem('x')}catch(e){const s=new Map(),sh={getItem:k=>s.has(k)?s.get(k):null,setItem:(k,v)=>s.set(k,String(v)),removeItem:k=>s.delete(k),clear:()=>s.clear(),key:i=>Array.from(s.keys())[i]??null,get length(){return s.size}};Object.defineProperty(window,'localStorage',{value:sh,configurable:true})}</script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;font-size:11px;color:var(--figma-color-text,#111);background:var(--figma-color-bg,#fff)}
+    body{display:flex;flex-direction:column}
+    #plugin-root{display:flex;flex-direction:column;width:100%;height:100%;overflow:hidden}
+    .main-area{display:flex;flex-direction:row;flex:1;overflow:hidden;min-height:0}
+    .col-preview{flex:1;min-width:100px;display:flex;flex-direction:column;padding:16px;border-right:1px solid var(--figma-color-border,#e5e5e5);gap:8px;overflow:hidden}
+    .preview-header{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .preview-label{font-size:10px;font-weight:600;color:var(--figma-color-text-secondary,#737373);text-transform:uppercase;letter-spacing:.05em}
+    .mode-toggle{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border:1px solid var(--figma-color-border,#e5e5e5);border-radius:4px;background:transparent;cursor:pointer;padding:0;color:var(--figma-color-text-secondary,#737373)}
+    .mode-toggle:hover{background:var(--figma-color-bg-secondary,#f5f5f5)}
+    #preview-canvas{display:block;border-radius:6px;flex:1;width:100%;min-height:200px;border:1px solid var(--figma-color-border,#e5e5e5)}
+    .col-controls{width:320px;flex-shrink:0;overflow-y:auto;overflow-x:hidden;padding:24px;display:flex;flex-direction:column;gap:16px}
+    .ctrl-section{display:flex;flex-direction:column;gap:8px}
+    .ctrl-label{font-size:10px;font-weight:600;color:var(--figma-color-text-secondary,#737373);text-transform:uppercase;letter-spacing:.05em}
+    .segmented{display:flex;gap:2px;background:var(--figma-color-bg-secondary,#f0f0f0);border-radius:6px;padding:2px}
+    .seg-btn{flex:1;padding:4px 0;border:none;border-radius:4px;background:transparent;cursor:pointer;font-size:11px;font-family:inherit;color:var(--figma-color-text-secondary,#737373);transition:all .12s}
+    .seg-btn.active{background:var(--figma-color-bg,#fff);color:var(--figma-color-text,#111);font-weight:500;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+    .field{display:flex;align-items:center;justify-content:space-between;min-height:28px;gap:8px}
+    .field-label{color:var(--figma-color-text,#111);flex:1;font-size:11px}
+    .toggle{position:relative;display:inline-flex;align-items:center;width:28px;height:16px;flex-shrink:0;cursor:pointer}
+    .toggle input{opacity:0;width:0;height:0;position:absolute}
+    .toggle-track{position:absolute;inset:0;background:var(--figma-color-border,#d0d0d0);border-radius:8px;transition:background .15s}
+    .toggle-thumb{position:absolute;width:12px;height:12px;left:2px;background:#fff;border-radius:50%;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+    .toggle input:checked~.toggle-track{background:#18a0fb}
+    .toggle input:checked~.toggle-thumb{transform:translateX(12px)}
+    .file-btn-label{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border:1px solid var(--figma-color-border,#e5e5e5);border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit;background:var(--figma-color-bg-secondary,#f5f5f5);color:var(--figma-color-text,#111);width:100%;transition:background .12s}
+    .file-btn-label:hover{background:var(--figma-color-bg-hover,#e8e8e8)}
+    .data-status{font-size:10px;color:var(--figma-color-text-secondary,#737373);margin-top:2px;display:none}
+    .data-status.visible{display:block}
+    .text-input{width:100%;padding:5px 8px;border:1px solid var(--figma-color-border,#e5e5e5);border-radius:5px;background:var(--figma-color-bg-secondary,#f5f5f5);color:var(--figma-color-text,#111);font-size:11px;font-family:inherit;outline:none;transition:border-color .12s}
+    .text-input:focus{border-color:#18a0fb;background:var(--figma-color-bg,#fff)}
+    .footer{flex-shrink:0;padding:10px 12px;border-top:1px solid var(--figma-color-border,#e5e5e5)}
+    .generate-btn{width:100%;padding:8px;background:#18a0fb;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer;transition:background .12s}
+    .generate-btn:hover:not(:disabled){background:#0d8de8}
+    .generate-btn:disabled{background:var(--figma-color-border,#e0e0e0);color:var(--figma-color-text-secondary,#737373);cursor:not-allowed}
+    .resize-handle{position:fixed;bottom:0;right:0;width:14px;height:14px;cursor:nwse-resize;z-index:500;opacity:.3;transition:opacity .15s}
+    .resize-handle:hover{opacity:.7}
+  </style>
+</head>
+<body>
+<div id="plugin-root">
+  <div class="main-area">
+    <div class="col-preview">
+      <div class="preview-header">
+        <span class="preview-label">Preview</span>
+        <button class="mode-toggle" id="modeToggle" title="Toggle dark/light">
+          <svg id="iconLight" width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.25"/><line x1="7" y1="1" x2="7" y2="2.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/><line x1="7" y1="11.5" x2="7" y2="13" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/><line x1="1" y1="7" x2="2.5" y2="7" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/><line x1="11.5" y1="7" x2="13" y2="7" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>
+          <svg id="iconDark" width="13" height="13" viewBox="0 0 14 14" fill="none" style="display:none"><path d="M11.5 8.5A5 5 0 0 1 5.5 2.5a5 5 0 1 0 6 6z" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <canvas id="preview-canvas"></canvas>
+      <input type="checkbox" id="darkMode" style="display:none">
+    </div>
+    <div class="col-controls">
+      <div class="ctrl-section">
+        <div class="ctrl-label">Chart type</div>
+        <div class="segmented" id="chartTypeGroup">
+          <button class="seg-btn active" data-value="bar">Bar</button>
+          <button class="seg-btn" data-value="area">Area</button>
+          <button class="seg-btn" data-value="pie">Pie</button>
+        </div>
+        <input type="hidden" id="chartType" value="bar">
+      </div>
+      <div class="ctrl-section">
+        <div class="ctrl-label">Data source</div>
+        <label class="file-btn-label"><input type="file" id="csvFile" accept=".csv,.txt" style="display:none">Upload CSV</label>
+        <div class="data-status" id="csvStatus"></div>
+      </div>
+      <div class="ctrl-section">
+        <div class="ctrl-label">Layout</div>
+        <div class="field"><span class="field-label">Show legend</span><label class="toggle"><input type="checkbox" id="showLegend" checked><span class="toggle-track"></span><span class="toggle-thumb"></span></label></div>
+        <div class="field" id="field-showGrid"><span class="field-label">Show grid lines</span><label class="toggle"><input type="checkbox" id="showGrid" checked><span class="toggle-track"></span><span class="toggle-thumb"></span></label></div>
+        <div class="field" id="field-stacked"><span class="field-label">Stacked</span><label class="toggle"><input type="checkbox" id="stackedMode"><span class="toggle-track"></span><span class="toggle-thumb"></span></label></div>
+        <div class="field" id="field-horizontal" style="display:none"><span class="field-label">Horizontal</span><label class="toggle"><input type="checkbox" id="horizontal"><span class="toggle-track"></span><span class="toggle-thumb"></span></label></div>
+      </div>
+      <div class="ctrl-section">
+        <div class="ctrl-label">Titles</div>
+        <div class="field"><span class="field-label">Chart title</span><label class="toggle"><input type="checkbox" id="showChartTitle" checked><span class="toggle-track"></span><span class="toggle-thumb"></span></label></div>
+        <div id="wrap-chartTitle"><input type="text" class="text-input" id="chartTitle" value="Chart title"></div>
+        <div class="field" style="margin-top:4px"><span class="field-label">X axis title</span><label class="toggle"><input type="checkbox" id="showXAxisTitle"><span class="toggle-track"></span><span class="toggle-thumb"></span></label></div>
+        <div id="wrap-xAxisTitle" style="display:none"><input type="text" class="text-input" id="xAxisTitle" value="X axis"></div>
+        <div class="field" style="margin-top:4px"><span class="field-label">Y axis title</span><label class="toggle"><input type="checkbox" id="showYAxisTitle"><span class="toggle-track"></span><span class="toggle-thumb"></span></label></div>
+        <div id="wrap-yAxisTitle" style="display:none"><input type="text" class="text-input" id="yAxisTitle" value="Y-Axis"></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><button class="generate-btn" id="action-generate">Generate chart</button></div>
+  <div class="resize-handle" id="resize-handle"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 3L3 9M9 6.5L6.5 9" stroke="#737373" stroke-width="1.25" stroke-linecap="round"/></svg></div>
+</div>
+<script>
+var parsedCsvData=null,parsedCsvNames=null,parsedCategoryNames=null
+var stateHorizontal=false,stateStacked=false,stateGrid=true,stateLegend=true
+var isDarkMode=Boolean(document.getElementById('darkMode')&&document.getElementById('darkMode').checked)
+var currentUpdateTargetId=null,previewRaf=0
+function applyDarkModeUI(on){isDarkMode=on;document.getElementById('iconLight').style.display=on?'none':'';document.getElementById('iconDark').style.display=on?'':'none'}
+applyDarkModeUI(isDarkMode)
+function setChartTypeBtn(val){document.querySelectorAll('.seg-btn').forEach(function(b){b.classList.toggle('active',b.dataset.value===val)});document.getElementById('chartType').value=val}
+document.querySelectorAll('.seg-btn').forEach(function(b){b.addEventListener('click',function(){setChartTypeBtn(b.dataset.value);updateChartTypeUI();schedulePreview()})})
+function updateChartTypeUI(){var t=document.getElementById('chartType').value||'bar',p=t==='pie',b=t==='bar';document.getElementById('field-showGrid').style.display=p?'none':'';document.getElementById('field-stacked').style.display=p?'none':'';document.getElementById('field-horizontal').style.display=b?'':'none';updateTitleVisibility()}
+function updateTitleVisibility(){var t=document.getElementById('chartType').value||'bar',p=t==='pie';document.getElementById('wrap-chartTitle').style.display=document.getElementById('showChartTitle').checked?'':'none';document.getElementById('wrap-xAxisTitle').style.display=(!p&&document.getElementById('showXAxisTitle').checked)?'':'none';document.getElementById('wrap-yAxisTitle').style.display=(!p&&document.getElementById('showYAxisTitle').checked)?'':'none'}
+document.getElementById('showLegend').addEventListener('change',function(){stateLegend=!!this.checked;schedulePreview()})
+document.getElementById('showGrid').addEventListener('change',function(){stateGrid=!!this.checked;schedulePreview()})
+document.getElementById('stackedMode').addEventListener('change',function(){stateStacked=!!this.checked;schedulePreview()})
+document.getElementById('horizontal').addEventListener('change',function(){stateHorizontal=!!this.checked;schedulePreview()})
+document.getElementById('showChartTitle').addEventListener('change',function(){updateTitleVisibility();schedulePreview()})
+document.getElementById('showXAxisTitle').addEventListener('change',function(){updateTitleVisibility();schedulePreview()})
+document.getElementById('showYAxisTitle').addEventListener('change',function(){updateTitleVisibility();schedulePreview()})
+document.getElementById('chartTitle').addEventListener('input',schedulePreview)
+document.getElementById('xAxisTitle').addEventListener('input',schedulePreview)
+document.getElementById('yAxisTitle').addEventListener('input',schedulePreview)
+document.getElementById('modeToggle').addEventListener('click',function(){applyDarkModeUI(!isDarkMode);schedulePreview()})
+updateChartTypeUI()
+function parseCsv(text){var lines=text.split(/\r?\n/).map(function(l){return l.trim()}).filter(function(l){return l.length>0});if(!lines.length)return null;var rows=lines.map(function(l){return l.split(',').map(function(c){return c.trim().replace(/^"|"$/g,'')})});var hasHeader=rows[0].some(function(c){return isNaN(Number(c))||c===''});var headers=null,dataRows=rows;if(hasHeader){headers=rows[0];dataRows=rows.slice(1)}if(!dataRows.length)return null;var firstLabel=isNaN(Number(dataRows[0][0]))||dataRows[0][0]==='';var off=firstLabel?1:0,nC=Math.max.apply(null,dataRows.map(function(r){return r.length}))-off;if(nC<=0)return null;var series=[];for(var c=0;c<nC;c++){var col=[];for(var r=0;r<dataRows.length;r++){var v=parseFloat(dataRows[r][c+off]);col.push(isFinite(v)?v:0)}series.push(col)}var names=null;if(headers){names=[];for(var c2=off;c2<headers.length;c2++)names.push(headers[c2]||'S'+(c2-off+1))}var cats=firstLabel?dataRows.map(function(r){return r[0]||''}):null;return{series:series,names:names,categoryNames:cats}}
+function updateCsvStatus(txt){var el=document.getElementById('csvStatus');if(txt){el.textContent=txt;el.classList.add('visible')}else{el.textContent='';el.classList.remove('visible')}}
+document.getElementById('csvFile').addEventListener('change',function(e){var files=e.target.files;if(!files||!files.length){parsedCsvData=null;parsedCsvNames=null;parsedCategoryNames=null;updateCsvStatus('');schedulePreview();return}var reader=new FileReader();reader.onload=function(ev){var result=parseCsv(ev.target.result);if(!result||!result.series.length){parsedCsvData=null;parsedCsvNames=null;updateCsvStatus('Could not parse CSV');schedulePreview();return}parsedCsvData=result.series;parsedCsvNames=result.names;parsedCategoryNames=result.categoryNames||null;updateCsvStatus(Math.min(result.series.length,6)+' series, '+(result.series[0]?result.series[0].length:0)+' data points');schedulePreview()};reader.readAsText(files[0])})
+function hasParam(v,n){return Object.prototype.hasOwnProperty.call(v,n)}
+function setVal(id,v){var el=document.getElementById(id);if(!el)return;el.value=String(v)}
+function setChecked(id,v){var el=document.getElementById(id);if(!el)return;el.checked=Boolean(v)}
+function setPanelParams(values){if(typeof values!=='object'||values===null)return;if(hasParam(values,'darkMode')){applyDarkModeUI(Boolean(values.darkMode))}if(hasParam(values,'chartType')){setChartTypeBtn(values.chartType);updateChartTypeUI()}if(hasParam(values,'showLegend')){setChecked('showLegend',values.showLegend);stateLegend=Boolean(values.showLegend)}if(hasParam(values,'showGrid')){setChecked('showGrid',values.showGrid);stateGrid=Boolean(values.showGrid)}if(hasParam(values,'stackedMode')){setChecked('stackedMode',values.stackedMode);stateStacked=Boolean(values.stackedMode)}if(hasParam(values,'horizontal')){setChecked('horizontal',values.horizontal);stateHorizontal=Boolean(values.horizontal)}if(hasParam(values,'showChartTitle')){setChecked('showChartTitle',values.showChartTitle);updateTitleVisibility()}if(hasParam(values,'chartTitle'))setVal('chartTitle',values.chartTitle);if(hasParam(values,'showXAxisTitle')){setChecked('showXAxisTitle',values.showXAxisTitle);updateTitleVisibility()}if(hasParam(values,'xAxisTitle'))setVal('xAxisTitle',values.xAxisTitle);if(hasParam(values,'showYAxisTitle')){setChecked('showYAxisTitle',values.showYAxisTitle);updateTitleVisibility()}if(hasParam(values,'yAxisTitle'))setVal('yAxisTitle',values.yAxisTitle);schedulePreview()}
+function currentParams(){return{chartType:String(document.getElementById('chartType').value||'bar'),showLegend:stateLegend,showGrid:stateGrid,stackedMode:stateStacked,horizontal:stateHorizontal,darkMode:isDarkMode,showChartTitle:Boolean(document.getElementById('showChartTitle').checked),chartTitle:String(document.getElementById('chartTitle').value||''),showXAxisTitle:Boolean(document.getElementById('showXAxisTitle').checked),xAxisTitle:String(document.getElementById('xAxisTitle').value||''),showYAxisTitle:Boolean(document.getElementById('showYAxisTitle').checked),yAxisTitle:String(document.getElementById('yAxisTitle').value||'')}}
+function resolveCustomData(){if(parsedCsvData&&parsedCsvData.length>0)return{customData:parsedCsvData,seriesNames:parsedCsvNames,categoryNames:parsedCategoryNames};return{customData:null,seriesNames:null,categoryNames:null}}
+document.getElementById('action-generate').addEventListener('click',function(){var r=resolveCustomData();parent.postMessage({pluginMessage:{type:'action',id:'generate',params:currentParams(),customData:r.customData,seriesNames:r.seriesNames,categoryNames:r.categoryNames,updateTargetId:currentUpdateTargetId,darkMode:isDarkMode}},'*')})
+window.onmessage=function(event){var msg=event.data&&event.data.pluginMessage;if(!msg)return;if(msg.type==='params-change'){setPanelParams(msg.params);return}}
+window.addEventListener('message',function(event){var msg=event.data&&event.data.pluginMessage;if(!msg||msg.type!=='action-state'||!msg.actions)return;var a=msg.actions['generate'],btn=document.getElementById('action-generate');if(a&&btn){if(a.enabled===false)btn.setAttribute('disabled','');else btn.removeAttribute('disabled');if(typeof a.label==='string')btn.textContent=a.label;currentUpdateTargetId=a.updateTargetId||null}})
+var CC=['#EA580C','#0D9488','#164E63','#FBBF24','#38BDF8','#A78BFA']
+var DSN=['Services 1','B2B License','B2B Consumption','Product D','Product E','Product F']
+var SDS_BG='#F5F5F5',SDS_BORDER='#E5E5E5',SDS_FG='#0A0A0A',SDS_MUTED='#737373',SDS_RADIUS=12,SDS_PAD=32
+function seededRand(seed){var s=seed;return function(){s=(s*1664525+1013904223)&0xffffffff;return((s>>>0)/0xffffffff)}}
+function genDefaultSeries(nS,nP){var out=[];for(var i=0;i<nS;i++){var rng=seededRand(i*997+42),d=[],v=300+rng()*400;for(var j=0;j<nP;j++){v+=(rng()-.45)*250;v=Math.max(50,Math.min(950,v));d.push(Math.round(v))}out.push(d)}return out}
+function niceMax(dm){if(!dm||dm<=0)return 100;var raw=dm/5,mag=Math.pow(10,Math.floor(Math.log10(raw))),steps=[1,2,2.5,5,10],st=mag*10;for(var k=0;k<steps.length;k++){if(mag*steps[k]>=raw){st=mag*steps[k];break}}return Math.ceil(dm/st)*st}
+function rrect(ctx,x,y,w,h,r){if(h<=0||w<=0)return;r=Math.min(r,Math.min(w,h)/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath()}
+function getPreviewData(){var res=resolveCustomData(),series=res.customData,names=res.seriesNames,cats=res.categoryNames;if(!series||!series.length){series=genDefaultSeries(3,5);names=null;cats=null}series=series.slice(0,6);var nS=series.length,nP=series.reduce(function(m,s){return Math.max(m,s.length)},0);series=series.map(function(s){if(s.length<nP){var l=s[s.length-1]||0;return s.concat(Array(nP-s.length).fill(l))}return s.slice(0,nP)});var sN=[],cN=[];for(var i=0;i<nS;i++)sN.push(names&&names[i]?names[i]:DSN[i]||('S'+(i+1)));for(var i=0;i<nP;i++)cN.push(cats&&cats[i]?cats[i]:'Y'+(i+1));return{series:series,nS:nS,nP:nP,seriesNames:sN,categoryNames:cN}}
+function pvHorizontal(ctx,pL,pR,pT,pB,plotW,plotH,d,maxV,stacked,showGrid,sYT,yTitle,sXT,xTitle,F,sc,pad,cFG,cMUT,cGRID){
+  var YTW=sYT?14:0,bL=pL+YTW,bW=plotW-YTW
+  if(sYT){ctx.save();ctx.translate(pL+YTW/2,(pT+pB)/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=cMUT;ctx.font='7px '+F;ctx.textAlign='center';ctx.textBaseline='middle';var ytTxt=yTitle;while(ytTxt.length>2&&ctx.measureText(ytTxt).width>(pB-pT)*0.85)ytTxt=ytTxt.slice(0,-1);if(ytTxt!==yTitle)ytTxt=ytTxt.slice(0,-1)+'…';ctx.fillText(ytTxt,0,0);ctx.restore()}
+  var ROW_GAP=Math.max(2,Math.round(8*sc)),rowH=Math.max(6,(plotH-ROW_GAP*(d.nP-1))/d.nP)
+  if(showGrid){ctx.strokeStyle=cGRID;ctx.lineWidth=0.5;for(var g=0;g<=4;g++){var gx=bL+(g/4)*bW;ctx.beginPath();ctx.moveTo(gx,pT);ctx.lineTo(gx,pB);ctx.stroke()}}
+  for(var i=0;i<d.nP;i++){
+    var rowY=pT+i*(rowH+ROW_GAP)
+    if(stacked){
+      var bH=rowH*0.65,bOff=(rowH-bH)/2,base=0
+      for(var s=0;s<d.nS;s++){var bww=Math.max(0,(d.series[s][i]/maxV)*bW);if(bww<0.5){base+=bww;continue}rrect(ctx,bL+base,rowY+bOff,bww,bH,s===0?2:0);ctx.fillStyle=CC[s]||'#999';ctx.fill();if(s===0&&bww>20){ctx.save();ctx.fillStyle='rgba(255,255,255,0.92)';ctx.font='bold 7px '+F;ctx.textAlign='left';ctx.textBaseline='middle';var cl=d.categoryNames[i];while(cl.length>1&&ctx.measureText(cl).width>bww-10)cl=cl.slice(0,-1);if(cl!==d.categoryNames[i])cl=cl.slice(0,-1)+'…';ctx.fillText(cl,bL+5,rowY+bOff+bH/2);ctx.restore()}base+=bww}
+      var tot=0;for(var s2=0;s2<d.nS;s2++)tot+=d.series[s2][i];ctx.fillStyle=cMUT;ctx.font='7px '+F;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(String(Math.round(tot)),bL+(tot/maxV)*bW+4,rowY+rowH/2)
+    } else {
+      var subH=Math.max(2,(rowH-1*(d.nS-1))/d.nS)
+      for(var s=0;s<d.nS;s++){var bww=Math.max(0,(d.series[s][i]/maxV)*bW),sy=rowY+s*(subH+1);if(bww>=0.5){rrect(ctx,bL,sy,bww,subH,2);ctx.fillStyle=CC[s]||'#999';ctx.fill();if(s===0&&bww>20){ctx.save();ctx.fillStyle='rgba(255,255,255,0.92)';ctx.font='bold 7px '+F;ctx.textAlign='left';ctx.textBaseline='middle';var cl=d.categoryNames[i];while(cl.length>1&&ctx.measureText(cl).width>bww-10)cl=cl.slice(0,-1);if(cl!==d.categoryNames[i])cl=cl.slice(0,-1)+'…';ctx.fillText(cl,bL+4,sy+subH/2);ctx.restore()}}ctx.fillStyle=cMUT;ctx.font='7px '+F;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(String(Math.round(d.series[s][i])),bL+bww+4,sy+subH/2)}
+    }
+  }
+  ctx.fillStyle=cMUT;ctx.font='7px '+F;ctx.textAlign='center';ctx.textBaseline='top';for(var g=0;g<=4;g++){var gv=Math.round((g/4)*maxV),gx2=bL+(g/4)*bW,gl=gv>=10000?(gv/1000).toFixed(0)+'k':gv>=1000?(gv/1000).toFixed(1).replace(/\.0$/,'')+'k':String(gv);ctx.fillText(gl,gx2,pB+3)}
+  if(sXT){ctx.fillStyle=cMUT;ctx.font='7px '+F;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(xTitle||'',bL+bW/2,pB+14)}
+}
+function pvVertical(ctx,pL,pR,pT,pB,plotW,plotH,d,maxV,stacked,showGrid,sYT,yTitle,sXT,xTitle,F,sc,pad,cFG,cMUT,cGRID){
+  var YLW=24,bL=pL+YLW,bW=plotW-YLW
+  ctx.fillStyle=cMUT;ctx.font='7px '+F;ctx.textAlign='right';ctx.textBaseline='middle'
+  for(var g=0;g<=4;g+=2){var val=(g/4)*maxV,gy=pT+plotH-(g/4)*plotH;ctx.fillText(val>=10000?(val/1000).toFixed(0)+'k':val>=1000?(val/1000).toFixed(1).replace(/\.0$/,'')+'k':val.toFixed(0),bL-3,gy)}
+  if(showGrid){ctx.strokeStyle=cGRID;ctx.lineWidth=0.5;for(var g=0;g<=4;g++){var gy=pT+plotH-(g/4)*plotH;ctx.beginPath();ctx.moveTo(bL,gy);ctx.lineTo(pR,gy);ctx.stroke()}}
+  if(sYT){ctx.save();ctx.translate(pL+YLW/2,(pT+pB)/2);ctx.rotate(-Math.PI/2);ctx.fillStyle=cMUT;ctx.font='7px '+F;ctx.textAlign='center';ctx.textBaseline='middle';var yt=yTitle;while(yt.length>2&&ctx.measureText(yt).width>plotH*0.8)yt=yt.slice(0,-1);ctx.fillText(yt,0,0);ctx.restore()}
+  var cW=bW/d.nP,gap=Math.max(1,cW*.1)
+  if(stacked){for(var i=0;i<d.nP;i++){var base=0,bx=bL+i*cW+gap,bww=cW-gap*2;for(var s=d.nS-1;s>=0;s--){var bh=Math.max(0,(d.series[s][i]/maxV)*plotH);rrect(ctx,bx,pT+plotH-base-bh,bww,bh,s===d.nS-1?2:0);ctx.fillStyle=CC[s]||'#999';ctx.fill();base+=bh}}}
+  else{var sw=Math.max(1,(cW-gap*2)/d.nS);for(var i=0;i<d.nP;i++)for(var s=0;s<d.nS;s++){var bh=Math.max(0,(d.series[s][i]/maxV)*plotH),bx=bL+i*cW+gap+s*sw;rrect(ctx,bx,pT+plotH-bh,Math.max(1,sw-1),bh,2);ctx.fillStyle=CC[s]||'#999';ctx.fill()}}
+  ctx.fillStyle=cMUT;ctx.font='7px '+F;ctx.textAlign='center';ctx.textBaseline='top'
+  for(var i=0;i<d.nP;i++){var cx2=bL+i*cW+cW/2,cat=d.categoryNames[i];while(cat.length>1&&ctx.measureText(cat).width>cW-2)cat=cat.slice(0,-1);if(cat!==d.categoryNames[i])cat=cat.slice(0,-1)+'…';ctx.fillText(cat,cx2,pB+2)}
+  if(sXT){ctx.fillStyle=cMUT;ctx.font='7px '+F;ctx.textAlign='center';ctx.fillText(xTitle||'',bL+bW/2,pB+12)}
+}
+function pvArea(ctx,pL,pR,pT,pB,plotW,plotH,d,maxV,stacked,showGrid,F,sc,cMUT,cGRID){
+  function tx(i){return pL+(i/Math.max(1,d.nP-1))*plotW}function ty(v){return pT+plotH-(v/maxV)*plotH}
+  if(showGrid){ctx.strokeStyle=cGRID;ctx.lineWidth=0.5;for(var g=0;g<=4;g++){var gy=pT+plotH-(g/4)*plotH;ctx.beginPath();ctx.moveTo(pL,gy);ctx.lineTo(pR,gy);ctx.stroke()}}
+  var ss=[];if(stacked){var run=Array(d.nP).fill(0);for(var s=0;s<d.nS;s++){var row=[];for(var i=0;i<d.nP;i++){run[i]+=d.series[s][i];row.push(run[i])}ss.push(row)}}
+  for(var s=d.nS-1;s>=0;s--){var top=stacked?ss[s]:d.series[s],bot=stacked&&s>0?ss[s-1]:null,col=CC[s]||'#999';ctx.beginPath();ctx.moveTo(tx(0),ty(top[0]));for(var i=1;i<d.nP;i++)ctx.lineTo(tx(i),ty(top[i]));if(bot){for(var i=d.nP-1;i>=0;i--)ctx.lineTo(tx(i),ty(bot[i]))}else{ctx.lineTo(tx(d.nP-1),pB);ctx.lineTo(pL,pB)}ctx.closePath();ctx.fillStyle=col+'40';ctx.fill();ctx.beginPath();ctx.moveTo(tx(0),ty(top[0]));for(var i=1;i<d.nP;i++)ctx.lineTo(tx(i),ty(top[i]));ctx.strokeStyle=col;ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke()}
+  ctx.fillStyle=cMUT;ctx.font='7px '+F;ctx.textAlign='center';ctx.textBaseline='top';for(var i=0;i<d.nP;i++)ctx.fillText(d.categoryNames[i],tx(i),pB+2)
+}
+function pvPie(ctx,cx,cy,r,d){var vals=d.series.map(function(s){return s.reduce(function(a,b){return a+b},0)}),total=vals.reduce(function(a,b){return a+b},0)||1,ang=-Math.PI/2;for(var s=0;s<d.nS;s++){var sw=(vals[s]/total)*Math.PI*2;if(sw<.001){ang+=sw;continue}ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,ang,ang+sw);ctx.closePath();ctx.fillStyle=CC[s]||'#999';ctx.fill();ang+=sw}}
+function drawPreview(){
+  var cv=document.getElementById('preview-canvas');if(!cv)return;var dpr=window.devicePixelRatio||1,W=Math.round(cv.getBoundingClientRect().width)||200,H=Math.round(cv.getBoundingClientRect().height)||300;cv.width=W*dpr;cv.height=H*dpr;var ctx=cv.getContext('2d');if(!ctx)return;ctx.scale(dpr,dpr)
+  var DK=isDarkMode,C_SLIDE=DK?'#0D0D0D':'#e8e8e8',C_CARD=DK?'#141414':'#F5F5F5',C_CARD_BORDER=DK?'rgba(255,255,255,0.12)':'#E5E5E5',C_FG=DK?'#FAFAFA':'#0A0A0A',C_MUTED=DK?'#A3A3A3':'#737373',C_GRID=DK?'rgba(255,255,255,0.08)':'#E5E5E5',F='Inter,-apple-system,sans-serif'
+  var chartType=document.getElementById('chartType').value||'bar',stacked=stateStacked,horizontal=chartType==='bar'&&stateHorizontal,showGrid=stateGrid,showLegend=stateLegend
+  var showChartTitle=Boolean(document.getElementById('showChartTitle').checked),chartTitle=(document.getElementById('chartTitle').value||'Chart title').trim()
+  var showXAxisTitle=Boolean(document.getElementById('showXAxisTitle').checked),xAxisTitle=(document.getElementById('xAxisTitle').value||'X axis').trim()
+  var showYAxisTitle=Boolean(document.getElementById('showYAxisTitle').checked),yAxisTitle=(document.getElementById('yAxisTitle').value||'Y-Axis').trim()
+  var d=getPreviewData();ctx.fillStyle=C_SLIDE;ctx.fillRect(0,0,W,H)
+  var CM=8,CL=CM,CT=CM,CW=W-CM*2,CH=H-CM*2;ctx.fillStyle=C_CARD;rrect(ctx,CL,CT,CW,CH,12);ctx.fill();ctx.strokeStyle=C_CARD_BORDER;ctx.lineWidth=1;rrect(ctx,CL+.5,CT+.5,CW-1,CH-1,12);ctx.stroke()
+  var sc=Math.min(CW/600,CH/500),pad=Math.max(8,Math.round(SDS_PAD*sc)),hdrH=0
+  if(showChartTitle||showLegend){
+    var TITLE_FS=Math.max(9,Math.round(18*sc)),SWATCH=Math.max(5,Math.round(12*sc)),hdrTop=CT+pad
+    if(showChartTitle){ctx.fillStyle=C_FG;ctx.font='600 '+TITLE_FS+'px '+F;ctx.textAlign='left';ctx.textBaseline='top';var tt=chartTitle;while(tt.length>3&&ctx.measureText(tt).width>CW*.45)tt=tt.slice(0,-1);if(tt!==chartTitle)tt=tt.slice(0,-1)+'…';ctx.fillText(tt,CL+pad,hdrTop)}
+    if(showLegend&&chartType!=='pie'){ctx.font='8px '+F;ctx.textBaseline='middle';var lx=CL+CW-pad;for(var s=d.nS-1;s>=0;s--){var lbl=d.seriesNames[s];while(lbl.length>2&&lx-ctx.measureText(lbl).width-SWATCH-9<CL+pad)lbl=lbl.slice(0,-1);if(lbl.length<d.seriesNames[s].length)lbl=lbl.slice(0,-1)+'…';var lw=ctx.measureText(lbl).width;lx-=lw;ctx.fillStyle=C_FG;ctx.fillText(lbl,lx,hdrTop+SWATCH/2);lx-=SWATCH+3;rrect(ctx,lx,hdrTop,SWATCH,SWATCH,2);ctx.fillStyle=CC[s]||'#999';ctx.fill();lx-=6;if(lx<CL+pad+40)break}}
+    hdrH=pad+Math.max((showChartTitle?TITLE_FS:0),(showLegend&&chartType!=='pie'?SWATCH:0))+pad
+  }
+  var plotT=CT+hdrH,plotB=CT+CH-pad,plotL=CL+pad,plotR=CL+CW-pad,plotW=plotR-plotL,plotH=plotB-plotT
+  if(plotH<10||plotW<10)return
+  var gMax=0;for(var i=0;i<d.nP;i++){if(stacked){var sm=0;for(var s=0;s<d.nS;s++)sm+=d.series[s][i];gMax=Math.max(gMax,sm)}else for(var s=0;s<d.nS;s++)gMax=Math.max(gMax,d.series[s][i])}
+  var maxV=niceMax(gMax)
+  if(chartType==='bar'&&horizontal)pvHorizontal(ctx,plotL,plotR,plotT,plotB,plotW,plotH,d,maxV,stacked,showGrid,showYAxisTitle,yAxisTitle,showXAxisTitle,xAxisTitle,F,sc,pad,C_FG,C_MUTED,C_GRID)
+  else if(chartType==='bar')pvVertical(ctx,plotL,plotR,plotT,plotB,plotW,plotH,d,maxV,stacked,showGrid,showYAxisTitle,yAxisTitle,showXAxisTitle,xAxisTitle,F,sc,pad,C_FG,C_MUTED,C_GRID)
+  else if(chartType==='area')pvArea(ctx,plotL,plotR,plotT,plotB,plotW,plotH,d,maxV,stacked,showGrid,F,sc,C_MUTED,C_GRID)
+  else pvPie(ctx,CL+CW/2,CT+CH/2,Math.min(CW,CH)/2-pad*1.2,d)
+}
+function schedulePreview(){if(previewRaf)cancelAnimationFrame(previewRaf);previewRaf=requestAnimationFrame(function(){try{drawPreview()}catch(e){setTimeout(function(){try{drawPreview()}catch(e2){}},50)}})}
+function tryDraw(attempt){var cv=document.getElementById('preview-canvas');if(!cv){if((attempt||0)<10)setTimeout(function(){tryDraw((attempt||0)+1)},80);return}var rect=cv.getBoundingClientRect(),testCtx=cv.getContext('2d');if((rect.width===0||rect.height===0||!testCtx)&&(attempt||0)<10){setTimeout(function(){tryDraw((attempt||0)+1)},100);return}drawPreview()}
+if(typeof ResizeObserver!=='undefined'){new ResizeObserver(schedulePreview).observe(document.querySelector('.col-preview'))}
+setTimeout(tryDraw,50);setTimeout(tryDraw,250)
+var resizing=false,rsX=0,rsY=0,rsW=0,rsH=0
+document.getElementById('resize-handle').addEventListener('mousedown',function(e){resizing=true;rsX=e.clientX;rsY=e.clientY;rsW=window.innerWidth;rsH=window.innerHeight;e.preventDefault()})
+document.addEventListener('mousemove',function(e){if(!resizing)return;var nW=Math.max(380,Math.min(1400,rsW+(e.clientX-rsX))),nH=Math.max(260,Math.min(1000,rsH+(e.clientY-rsY)));parent.postMessage({pluginMessage:{type:'window-resize',width:nW,height:nH}},'*')})
+document.addEventListener('mouseup',function(){resizing=false})
+parent.postMessage({pluginMessage:{type:'ready'}},'*')
+</script>
+</body>
+</html>
